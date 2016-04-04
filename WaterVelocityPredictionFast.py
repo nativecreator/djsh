@@ -21,10 +21,9 @@ EncodedUnitTable = {}
 
 def CreateEncodedUnitTable():
     for i in range(-100, 101):
-        EncodedUnitTable[i] = UnitEncoder.encode(i)
+        EncodedUnitTable[i] = UnitEncoder.encode(i).tolist()
 
 def DecodeUnit( U ):
-    #return int(float(UnitEncoder.decode(U)[0]['unit'][1]))
     dic, name = UnitEncoder.decode(U)
     if len(name) > 0:
         return int(numpy.mean(dic['unit'][0]))
@@ -35,28 +34,10 @@ def DecodeUnit( U ):
 def EncodeVector( u, v ):
     U = EncodedUnitTable[ u ]
     V = EncodedUnitTable[ v ]
-    return numpy.append(U, V)
-    #return U + V
+
+    return U + V
 
 def DecodeVector( Vec ):
-    EncodedWidth = UnitEncoder.getWidth();
-
-    U = Vec[0           :EncodedWidth]
-    V = Vec[EncodedWidth:EncodedWidth*2]
-
-    return DecodeUnit(U), DecodeUnit(V)
-    u = -999
-    v = -999
-
-    for item in EncodedUnitTable.items():
-        if numpy.array_equal( item[1], U ):
-            u = item[0]
-        if numpy.array_equal( item[1], V ):
-            v = item[0]
-
-    return u, v
-
-def DecodeVector2( Vec ):
     EncodedWidth = UnitEncoder.getWidth();
 
     U = Vec[0           :EncodedWidth]
@@ -65,14 +46,9 @@ def DecodeVector2( Vec ):
     u = numpy.asarray(U)
     v = numpy.asarray(V)
 
-    du = UnitEncoder.decode(u)
-    dv = UnitEncoder.decode(v)
-
-    return DecodeUnit(numpy.asarray(U)), DecodeUnit(numpy.asarray(V))
+    return DecodeUnit(u), DecodeUnit(v)
 
 # 일단 크기와 각도가 랜덤인 Vector Field(10 by 10)를 만들어보자.
-VectorField = numpy.zeros((0,), dtype=numpy.uint8)
-
 CreateEncodedUnitTable()
 
 xRange = 10
@@ -80,14 +56,14 @@ yRange = 10
 colDims = UnitEncoder.getWidth() * 2 * xRange * yRange
 
 tm = TM(columnDimensions=(colDims,),
-        cellsPerColumn=2,
+        cellsPerColumn=4,
         initialPermanence=0.5,
         connectedPermanence=0.5,
         minThreshold=10,
         maxNewSynapseCount=20,
         permanenceIncrement=0.1,
         permanenceDecrement=0.0,
-        activationThreshold=8,
+        activationThreshold=4,
         )
 
 print "Started!"
@@ -96,15 +72,20 @@ print "Started!"
 plt.figure()
 plt.title('Vector Field Prediction Using Machine Learning')
 
-for i in range(100):
-    Vec = []
+VectorSize = UnitEncoder.getWidth()*2
+
+for i in range(10):
+    Vec = numpy.zeros(xRange*yRange*VectorSize)
+    z=0
     for x in range(xRange):
         for y in range(yRange):
-            V = EncodeVector(random.randint(-100, 100), random.randint(-100, 100))
-            u, v = DecodeVector(V)
+            #V = EncodeVector(random.randint(-100, 100), random.randint(-100, 100))
+            #u, v = DecodeVector(V)
             #print "(%d, %d) = v(%d, %d)" % (x, y, u, v)
             #plt.quiver(x, y, u, v, pivot='mid', scale=10, units='dots', width=1)
-            Vec = numpy.append(Vec, V)
+            Vec[z : z + UnitEncoder.getWidth()] = EncodedUnitTable[random.randint(-100, 100)]
+            Vec[z + UnitEncoder.getWidth(): z + UnitEncoder.getWidth() * 2] = EncodedUnitTable[random.randint(-100, 100)]
+            z = z + VectorSize
 
     activeColumns = set([j for j, k in zip(count(), Vec) if k == 1])
     tm.compute(activeColumns, learn = True)
@@ -115,15 +96,13 @@ for i in range(100):
     #plt.clf()
     #numpy.savetxt("Vec%d.txt" % i, Vec)
 
-Vec = []
+Vec = numpy.zeros(xRange * yRange * VectorSize)
+z = 0
 for x in range(xRange):
     for y in range(yRange):
-        V = EncodeVector(random.randint(-100, 100), random.randint(-100, 100))
-        u, v = DecodeVector(V)
-
-        #print "(%d, %d) = v(%d, %d)" % (x, y, u, v)
-        #plt.quiver(x, y, u, v, pivot='mid', scale=10, units='dots', width=1)
-        Vec = numpy.append(Vec, V)
+        Vec[z: z + UnitEncoder.getWidth()] = EncodedUnitTable[random.randint(-100, 100)]
+        Vec[z + UnitEncoder.getWidth(): z + UnitEncoder.getWidth() * 2] = EncodedUnitTable[random.randint(-100, 100)]
+        z = z + VectorSize
 
 activeColumns = set([j for j, k in zip(count(), Vec) if k == 1])
 tm.compute(activeColumns, learn = False)
